@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35027.167
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "APIHack", "APIHack.pyproj", "{BE7C4F0C-A788-46A5-91CD-BCDEA31DC6E7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BE7C4F0C-A788-46A5-91CD-BCDEA31DC6E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE7C4F0C-A788-46A5-91CD-BCDEA31DC6E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9C036120-45F3-4672-814C-108C8CEF6E5B}
+	EndGlobalSection
+EndGlobal
