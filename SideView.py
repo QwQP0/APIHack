@@ -5,14 +5,13 @@ import os
 import shutil
 from PySide6.QtCore import QEvent, QObject, Qt, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QHBoxLayout, QInputDialog, QLabel, QMenu, QMessageBox, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMenu, QMessageBox, QPushButton, QVBoxLayout
 
-from System import Global, File, deleteObject
+from System import Global, File, InputDialog, deleteObject
 
 
 
 ##################### Main ######################
-
 
 
 
@@ -30,7 +29,7 @@ class SideView():
 
 	## UI 구성
 	# 기본 UI 구성
-	def initUI(self, project_name:str=None, request_name:str=None):
+	def initUI(self, project_name:str=None):
 		if project_name==None:  # 기본 UI 구성
 			# 오브젝트 선언
 			self.side_view_list=QVBoxLayout()
@@ -191,6 +190,8 @@ class SideView():
 			delete_request_action=QAction("Delete")
 			delete_request_action.triggered.connect(self.delete)
 			menu.addAction(delete_request_action)
+			if len(list(Global.projects_data[self.last_right_clicked_object.objectName()]["requests"].keys()))==1:  # 우클릭한 요청이 해당 프로젝트의 유일한 요청일 때
+				delete_request_action.setEnabled(False)  # 삭제 액션 비활성화
 		elif self.last_right_clicked_object.objectName().split('/')[1]=="saved":  # 저장된 응답
 			# 응답 이름 변경
 			rename_save_action=QAction("Rename")
@@ -215,11 +216,9 @@ class SideView():
 		return
 	# 새 요청 생성: 프로젝트
 	def newRequest(self):
-		new_request_dialog=QInputDialog()
-
-		name, ok=new_request_dialog.getText(Global.main, "", "New Request", text=File.setNameAuto("", self.last_right_clicked_object.text(), 'q'), flags=Qt.WindowType.FramelessWindowHint)
-
-		#todo# 요청 이름 겹치는 지 확인
+		new_request_dialog=InputDialog("New Request", File.setNameAuto("", self.last_right_clicked_object.text(), 'q'), "", File.isInvalidName, self.last_right_clicked_object.text(), 'q')
+		
+		name, ok=new_request_dialog.return_data
 
 		if ok:
 			if self.last_right_clicked_object.objectName()=="close":  # 프로젝트 접혀 있음
@@ -227,7 +226,7 @@ class SideView():
 
 			i=self.getLabelIndexByText("saved", self.last_right_clicked_object.text()+"/open")  # 클릭한 프로젝트의 저장 폴더 라벨의 인덱스 불러옴
 			
-			Global.projects_data[self.last_right_clicked_object.text()]["requests"][name]={}  #todo#기본 요청 정보 저장
+			Global.projects_data[self.last_right_clicked_object.text()]["requests"][name]=["", "", "", "GET"]  # 기본 요청 정보 저장
 
 			self.initLabel(name, self.last_right_clicked_object.text(), i, "q")  # 라벨 삽입
 			
@@ -236,22 +235,35 @@ class SideView():
 		return
 	# 이름 바꾸기: 프로젝트, 요청, 저장 파일
 	def rename(self):
-		rename_dialog=QInputDialog()
+		if self.last_right_clicked_object.objectName()=="open" or self.last_right_clicked_object.objectName()=="close":  # 프로젝트
+			rename_dialog=InputDialog("Rename", "", "", File.isInvalidName, Global.projects_data[self.last_right_clicked_object.text()]["last_path"], 'p')
+		elif len(self.last_right_clicked_object.objectName().split('/'))==1:  # 요청
+			rename_dialog=InputDialog("Rename", "", "", File.isInvalidName, self.last_right_clicked_object.objectName(), 'q')
+		else:  # 
+			rename_dialog=InputDialog("Rename", "", "", File.isInvalidName, self.last_right_clicked_object.objectName().split('/')[0], 's')
 
-		if self.last_right_clicked_object.objectName()=="open" or self.last_right_clicked_object.objectName()=="close":  # 프로젝트 일 때
-			name, ok=rename_dialog.getText(Global.main, "", "Rename Project", flags=Qt.WindowType.FramelessWindowHint)
-		else:
-			name, ok=rename_dialog.getText(Global.main, "", "Rename", flags=Qt.WindowType.FramelessWindowHint)
-
-		#todo# 이름 겹치는 지 확인(경로/이름 <-이 존재하는지)
+		name, ok=rename_dialog.return_data
 
 		if ok:
 			if self.last_right_clicked_object.objectName()=="open" or self.last_right_clicked_object.objectName()=="close":  # 프로젝트
-				Global.projects_data[name]=Global.projects_data[self.last_right_clicked_object.text()]  # 데이터 복제
-				shutil.move(Global.projects_data[name]["last_path"]+'/'+self.last_right_clicked_object.text(), Global.projects_data[name]["last_path"]+'/'+name)  # 프로젝트 폴더 이름변경
-				shutil.move(Global.projects_data[name]["last_path"]+'/'+name+'/'+self.last_right_clicked_object.text()+".ahp", Global.projects_data[name]["last_path"]+'/'+name+'/'+name+".ahp")
-				# -> 프로젝트 파일 이름 변경
-				del Global.projects_data[self.last_right_clicked_object.text()]  # 원본 데이터 삭제
+				project_path=Global.projects_data[self.last_right_clicked_object.text()]["last_path"]
+
+				shutil.move(project_path+'/'+self.last_right_clicked_object.text(), project_path+'/'+name)  # 프로젝트 폴더 이름변경
+				shutil.move(project_path+'/'+name+'/'+self.last_right_clicked_object.text()+".ahp", project_path+'/'+name+'/'+name+".ahp")  # 프로젝트 파일 이름 변경
+
+				## 데이터 복제
+				try:
+					# 프로젝트 데이터
+					Global.projects_data[name]=Global.projects_data[self.last_right_clicked_object.text()]
+					del Global.projects_data[self.last_right_clicked_object.text()]
+					# 응답 탭 데이터
+					Global.res[name]=Global.res[self.last_right_clicked_object.text()]
+					del Global.res[self.last_right_clicked_object.text()]
+					# 요청 스레드 데이터
+					Global.request_thread[name]=Global.request_thread[self.last_right_clicked_object.text()]
+					del Global.request_thread[self.last_right_clicked_object.text()]
+				except:
+					pass
 
 				# 사이드 뷰의 하위 요소(요청, 저장 폴더, 저장 파일) objectName 변경하기
 				s, n=self.getLabelIndexByPj(self.last_right_clicked_object.text())
@@ -264,11 +276,28 @@ class SideView():
 						obj.setObjectName(name)
 					else:
 						obj.setObjectName(name+"/"+obj.objectName().split('/')[1])
+
+				if self.last_right_clicked_object.text()==Global.cur_project_name:  # 현재 프로젝트의 이름 바뀜
+					Global.cur_project_name=name  # 현재 프로젝트 이름 변경
 			elif len(self.last_right_clicked_object.objectName().split('/'))==1:  # 요청
 				project_name=self.last_right_clicked_object.objectName()  # 오브젝트 이름에서 프로젝트 이름 가져오기
 
-				Global.projects_data[project_name]["requests"][name]=Global.projects_data[project_name]["requests"][self.last_right_clicked_object.text()]  # 데이터 복제
-				del Global.projects_data[project_name]["requests"][self.last_right_clicked_object.text()]  # 원본 데이터 삭제
+				## 데이터 복제
+				try:
+					# 요청 데이터
+					Global.projects_data[project_name]["requests"][name]=Global.projects_data[project_name]["requests"][self.last_right_clicked_object.text()]
+					del Global.projects_data[project_name]["requests"][self.last_right_clicked_object.text()]
+					# 응답 탭 데이터
+					Global.res[project_name][name]=Global.res[project_name][self.last_right_clicked_object.text()]
+					del Global.res[project_name][self.last_right_clicked_object.text()]
+					# 요청 스레드 데이터
+					Global.request_thread[project_name][name]=Global.request_thread[project_name][self.last_right_clicked_object.text()]
+					del Global.request_thread[project_name][self.last_right_clicked_object.text()]
+				except:
+					pass
+
+				if project_name==Global.cur_project_name and self.last_right_clicked_object.text()==Global.cur_request_name:  # 현재 요청의 이름 바뀜
+					Global.cur_request_name=name  # 현재 요청 이름 변경
 			else:  # 저장 파일
 				project_name=self.last_right_clicked_object.objectName().split('/')[0]  # 오브젝트 이름에서 프로젝트 이름 가져오기
 
@@ -276,9 +305,6 @@ class SideView():
 					Global.projects_data[project_name]["last_path"]+'/'+project_name+'/saved/'+name+'.rsv')  # 저장된 파일 이름 변경
 
 			self.last_right_clicked_object.setText(name)  # 사이드 뷰의 오브젝트 이름 변경
-
-		else:
-			print("cancel")
 
 		return
 	# 복제: 요청, 저장 파일
@@ -311,30 +337,27 @@ class SideView():
 		if self.last_right_clicked_object.objectName()=="open" or self.last_right_clicked_object.objectName()=="close":  # 프로젝트
 			are_you_sure=QMessageBox()
 			are_you_sure.setText("Delete Project File?")
-			are_you_sure.setStandardButtons(QMessageBox.StandardButton.Cancel|QMessageBox.StandardButton.No|QMessageBox.StandardButton.Yes)
+			are_you_sure.setStandardButtons(QMessageBox.StandardButton.Cancel|QMessageBox.StandardButton.Yes)
 			answer=are_you_sure.exec()
 
-			if answer!=QMessageBox.StandardButton.Cancel:
-				if answer==QMessageBox.StandardButton.Yes:  # 파일까지 삭제 선택
-					print(Global.projects_data[self.last_right_clicked_object.text()]["last_path"]+'/'+self.last_right_clicked_object.text())
-					shutil.rmtree(Global.projects_data[self.last_right_clicked_object.text()]["last_path"]+'/'+self.last_right_clicked_object.text())  # 프로젝트 폴더 삭제
-
-				del Global.projects_data[self.last_right_clicked_object.text()]  # 프로젝트 데이터 삭제
-
-				# 프로젝트 라벨과 하위 라벨 삭제
-				s, n=self.getLabelIndexByPj(self.last_right_clicked_object.text())
-				for i in range(s, n):
-					deleteObject(self.side_view_list.itemAt(s).widget())
+			if answer==QMessageBox.StandardButton.Yes:
+				shutil.rmtree(Global.projects_data[self.last_right_clicked_object.text()]["last_path"]+'/'+self.last_right_clicked_object.text())  # 프로젝트 폴더 삭제
+				self.closeProject()  # 프로젝트 닫기
 		elif len(self.last_right_clicked_object.objectName().split('/'))==1:  # 요청
 			project_name=self.last_right_clicked_object.objectName()  # 프로젝트 이름 가져오기
 			request_name=self.last_right_clicked_object.text()  # 요청 이름 가져오기
 
-			del Global.projects_data[project_name]["requests"][request_name]  # 요청 데이터 삭제
-
-			#todo#  현재 탭이 Request이고 삭제한 요청이 열려있는 상태일때 탭 전환
-			#todo#  각 프로젝트에서 요청 최소 1개씩은 남길 것
+			## 데이터 삭제
+			try:
+				del Global.projects_data[project_name]["requests"][request_name]  # 요청 데이터
+				del Global.res[project_name][request_name]  # 응답 탭 데이터
+				del Global.request_thread[project_name][request_name]  # 요청 스레드 데이터
+			except:
+				pass
 			
 			deleteObject(self.last_right_clicked_object)  # 사이드 뷰에서 요청 라벨 삭제
+
+			Global.main.loadProject(project_name)  # 같은 프로젝트 내 첫번째 요청 로드
 		else:  # 저장 파일
 			project_name=self.last_right_clicked_object.objectName().split('/')[0]  # 프로젝트 이름 가져오기
 			file_name=self.last_right_clicked_object.text()  # 저장된 응답 이름 가져오기
@@ -348,12 +371,23 @@ class SideView():
 		return
 	# 닫기: 프로젝트
 	def closeProject(self):
-		del Global.projects_data[self.last_right_clicked_object.text()]  # 프로젝트 데이터 삭제
+		# 데이터 삭제
+		try:
+			del Global.projects_data[self.last_right_clicked_object.text()]  # 프로젝트 데이터
+			del Global.res[self.last_right_clicked_object.text()]  # 응답 탭 데이터 삭제
+			del Global.request_thread[self.last_right_clicked_object.text()]  # 요청 스레드 데이터
+		except:
+			pass
 
 		# 프로젝트 라벨과 하위 라벨 삭제
 		s, n=self.getLabelIndexByPj(self.last_right_clicked_object.text())
 		for i in range(s, n):
 			deleteObject(self.side_view_list.itemAt(s).widget())
+
+		if len(list(Global.projects_data.keys()))==0:  # 프로젝트 종료 후 남은 프로젝트 없음
+			pass
+		else:
+			Global.main.loadProject(list(Global.projects_data.keys())[0])  # 다른 프로젝트 로드
 
 		return
 	# 모든 저장 파일 삭제: 저장 폴더
@@ -386,7 +420,7 @@ class SideView():
 			s, n=self.getLabelIndexByPj(Global.cur_project_name)
 			self.side_view_list.itemAt(s).widget().setStyleSheet("")  # 프로젝트 라벨 하이라이트 제거
 			if n!=1:  # 프로젝트 라벨이 접혀있지 않을 때
-				for i in range(s, n):
+				for i in range(s, s+n):
 					if self.side_view_list.itemAt(i).widget().text()==Global.cur_request_name:
 						self.side_view_list.itemAt(i).widget().setStyleSheet("")  # 요청 라벨 하이라이트 제거
 						break
@@ -394,7 +428,7 @@ class SideView():
 		# 새 하이라이트 추가
 		s, n=self.getLabelIndexByPj(project_name)
 		self.side_view_list.itemAt(s).widget().setStyleSheet("background-color:#ccc")  # 프로젝트 라벨 하이라이트 제거
-		for i in range(s, n):
+		for i in range(s, s+n):
 			if self.side_view_list.itemAt(i).widget().text()==request_name:
 				self.side_view_list.itemAt(i).widget().setStyleSheet("background-color:#aaa")  # 요청 라벨 하이라이트 제거
 				break

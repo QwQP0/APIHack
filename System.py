@@ -2,6 +2,13 @@ from enum import Enum
 import json
 import os
 
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout
+
+
+def isEmptyStr(s:str) -> bool:
+	return len(s.split(' '))==len(s)+1
+
 
 def deleteObject(obj):
 	obj.setParent(None)
@@ -24,7 +31,7 @@ class File:
 		content={}
 		content["last_path"]=project_path
 		content["requests"]={}  # 요청 저장
-		content["requests"][CONST.DEFAULT_NAME.REQUEST]=["", "", "", ""]  # 기본 요청 : [타겟, 헤더, 페이로드, 드롭다운 번호]
+		content["requests"][CONST.DEFAULT_NAME.REQUEST]=["", "", "", "GET"]  # 기본 요청 : [타겟, 헤더, 페이로드, 드롭다운 번호]
 		content["variables"]={}  # 변수 저장
 		if target_url!="":  # 타겟 URL을 입력 받았을 때
 			content["requests"][CONST.DEFAULT_NAME.REQUEST][0]="{{$base_url}}"
@@ -77,102 +84,88 @@ class File:
 
 
 	# 복제, 저장 시 자동으로 이름 설정
-	def setNameAuto(basename:str, project_name:str, content_type:str) -> str:
+	def setNameAuto(basename:str, path:str, content_type:str) -> str:
 		if basename=="":
 			if content_type=='p':  # 프로젝트
-				return File.setNameAuto(CONST.DEFAULT_NAME.PROJECT, project_name, content_type)
-			elif content_type=='q':  # 요청
-				return File.setNameAuto(CONST.DEFAULT_NAME.REQUEST, project_name, content_type)
-			elif content_type=='s':  # 저장 파일
-				return File.setNameAuto(CONST.DEFAULT_NAME.SAVED, project_name, content_type)
-			elif content_type=='v':  # 변수
-				return File.setNameAuto(CONST.DEFAULT_NAME.VAR, project_name, content_type)
-			
-		is_copied_name=False
-		last_num=-1
+				if not File.isInvalidName(CONST.DEFAULT_NAME.PROJECT, path, content_type):
+					return CONST.DEFAULT_NAME.PROJECT
+				else:
+					return File.setNameAuto(CONST.DEFAULT_NAME.PROJECT, path, content_type)
+			if content_type=='q':  # 요청
+				if not File.isInvalidName(CONST.DEFAULT_NAME.REQUEST, path, content_type):
+					return CONST.DEFAULT_NAME.REQUEST
+				else:
+					return File.setNameAuto(CONST.DEFAULT_NAME.REQUEST, path, content_type)
+			if content_type=='s':  # 저장 파일
+				if not File.isInvalidName(CONST.DEFAULT_NAME.SAVED, path, content_type):
+					return CONST.DEFAULT_NAME.SAVED
+				else:
+					return File.setNameAuto(CONST.DEFAULT_NAME.SAVED, path, content_type)
+			if content_type=='v':  # 변수
+				if not File.isInvalidName(CONST.DEFAULT_NAME.VAR, path, content_type):
+					return CONST.DEFAULT_NAME.VAR
+				else:
+					return File.setNameAuto(CONST.DEFAULT_NAME.VAR, path, content_type)
 
-		# 이름 검사
-		s=basename.find('(')
-		if s!=-1:
-			e=basename.find(')', s)
-
-			if e!=-1:  # 괄호로 둘러싼 부분
-				try:
-					last_num=int(basename[s+1:e])
-					basename=basename[:s]
-					
-					if basename[-1]==' ':
-						basename=basename[:s-1]
-
-					is_copied_name=True
-				except:
-					print("System.File.setNameAuto : not copied name")
-			else:
-				print("System.File.setNameAuto : not copied name")
+		## 괄호 안 숫자 추출
+		# 뒤에서 첫 번째 괄호 탐색
+		s=-1
+		e=-1
+		for i in range(len(basename)-1, -1, -1):
+			if basename[i]==')':
+				e=i
+			if basename[i]=='(':
+				if e!=-1:
+					s=i
+					break
+		# 괄호가 유효한지
+		if e!=len(basename)-1:  # 끝에 붙은 괄호 아님
+			is_copied_name=False
 		else:
-			print("System.File.setNameAuto : not copied name")
+			try:
+				int(basename[s+1:e])
+				is_copied_name=True
+			except:  # 괄호 내 글자가 숫자가 아님
+				is_copied_name=False
 
+		if is_copied_name:  # 복사된 이름 맞음
+			last_num=int(basename[s+1:e])
+			basename=basename[:len(basename)-2-len(str(last_num))]  # 순수 이름 추출(괄호와 숫자 길이 뺌)
+		else:  # 복사된 이름 아님
+			last_num=0
+		
+		while True:
+			last_num+=1
+			if not File.isInvalidName(basename+'('+str(last_num)+')', path, content_type):  # 새 이름 생성
+				return basename+'('+str(last_num)+')'
+
+		return
+	# 이름 유효 검사(빈 칸, 중복 이름, 슬래시 여부)
+	def isInvalidName(name:str, path:str="", content_type:str="") -> bool:
+		print(name, path)
+		if isEmptyStr:  # 빈칸임
+			return True
+		if len(name.split('/'))!=1:  # 슬래시가 포함된 이름
+			return True
+		
 		if content_type=='p':  # 프로젝트
-			if not is_copied_name:
-				# 프로젝트 이름이 이미 존재하는지 검사
-				if project_name=="": 
-					if os.path.exists(Global.projects_data[basename]["last_path"]+'/'+basename):  # 파일이 존재하는지 검사
-						last_num=0
-					else:
-						return basename
-				else:  # 새 프로젝트 생성 시 입력한 경로(혹은 마지막 경로) 검사를 위해 경로가 [project_name]으로 들어옴
-					if os.path.exists(project_name+'/'+basename):  # 파일이 존재하는지 검사
-						last_num=0
-					else:
-						return basename
-
-			while True:  # 다음 번호 붙이기
-				last_num+=1
-				
-				if project_name=="": 
-					if not os.path.exists(Global.projects_data[basename]["last_path"]+'/'+basename+f' ({last_num})'):  # 폴더가 존재하는지 검사
-						return basename+f' ({last_num})'  # 없으면 [basename] (n) 반환
-				else:  # 새 프로젝트 생성 시 입력한 경로(혹은 마지막 경로) 검사를 위해 경로가 [project_name]으로 들어옴
-					if not os.path.exists(project_name+'/'+basename+f' ({last_num})'):  # 폴더가 존재하는지 검사
-						return basename+f' ({last_num})'  # 없으면 [basename] (n) 반환
-
+			return os.path.exists(path+'/'+name)
 		elif content_type=='q':  # 요청
-			if not is_copied_name:
-				if basename in Global.projects_data[project_name]["requests"].keys():  # 해당 이름의 요청이 아직 없음
-					last_num=0
-				else:
-					return basename
-
-			while True:  # 다음 번호 붙이기
-				last_num+=1
-
-				if not basename+f" ({last_num})" in Global.projects_data[project_name]["requests"].keys():  # 요청이 존재하는 지 검사
-					return basename+f' ({last_num})'
-
-		elif content_type=='s':  # 저장된 응답
-			if not is_copied_name:
-				if os.path.exists(Global.projects_data[project_name]["last_path"]+'/'+project_name+"/saved/"+basename+".rsv"):  # 해당 이름의 요청이 아직 없음
-					last_num=0
-				else:
-					return basename
-
-			while True:  # 다음 번호 붙이기
-				last_num+=1
-
-				if not os.path.exists(Global.projects_data[project_name]["last_path"]+'/'+project_name+'/saved/'+basename+f' ({last_num}).rsv'):  # 파일이 존재하는지 검사
-					return basename+f' ({last_num})'
+			if name in list(Global.projects_data[path]["requests"].keys()):
+				return True
+			else:
+				return False
+		elif content_type=='s':  # 저장 파일
+			return os.path.exists(Global.projects_data[path]["last_path"]+'/'+path+"/saved/"+name+".rsv")
 		elif content_type=='v':  # 변수
-			if not is_copied_name:
-				if basename in Global.projects_data[project_name]["variables"].keys():  # 해당 이름의 변수가 아직 없음
-					last_num=0
-				else:
-					return basename
+			if name in list(Global.projects_data[path]["variables"].keys()):
+				return True
+			else:
+				return False
+		else:
+			return False
 
-			while True:  # 다음 번호 붙이기
-				last_num+=1
-
-				if not basename+f" ({last_num})" in Global.projects_data[project_name]["variables"].keys():  # 변수가 존재하는 지 검사
-					return basename+f' ({last_num})'
+		return True
 
 
 class Global:
@@ -220,6 +213,14 @@ class CONST:
 
 
 
+	class VARIABLES_SPLIT_TYPE(Enum):
+		VAR=0
+		NORMAL=1
+		FUNC_OPEN=10
+		FUNC_CLOSE=20
+
+
+
 	class DECODER_MODE(Enum):
 		DECODE=1
 		ENCODE=2
@@ -230,4 +231,82 @@ class CONST:
 		BASE_64=1
 		SHA=2
 
+
+
+	class RESPONSE_FILTER_TYPE(Enum):
+		RESPONSE_CODE=1
+		LENGTH=2
+		RESPONSE_TIME=3
+		WORD=4
+
 	DECODER_DEFAULT_FUNCTION=(DECODER_MODE.DECODE.name, DECODER_TYPE.BASE_64.name)
+
+
+
+
+
+class InputDialog(QDialog):
+	def __init__(self, label:str="", default_text:str="", error_text:str="", checker=None, *params):
+		self.return_data=()
+
+		## 오브젝트 선언
+		super().__init__()
+		self.div=QVBoxLayout()
+		self.label=QLabel(label)
+		self.text=QLineEdit(default_text)
+		self.error_text=QLabel(error_text)
+		self.ok_btn=QPushButton("OK")
+		self.cancel_btn=QPushButton("Cancel")
+
+		## 오브젝트 구성
+		self.div.addWidget(self.label)
+		self.div.addWidget(self.text)
+		self.div.addWidget(self.error_text)
+		# 버튼
+		self.div.addLayout(QHBoxLayout())
+		self.div.itemAt(3).addWidget(self.ok_btn)
+		self.div.itemAt(3).addWidget(self.cancel_btn)
+		
+		## 이벤트 연결
+		# 버튼 클릭 이벤트
+		self.ok_btn.clicked.connect(self.onClickOK)
+		self.cancel_btn.clicked.connect(self.onClickCancel)
+		# 텍스트 변경
+		self.text.textChanged.connect(lambda: self.checkInvaildText(checker, params))
+		print(params)
+
+		## 기타 설정
+		self.error_text.setStyleSheet("color:#c33")  # 오류 텍스트 색 설정
+		self.setLayout(self.div)
+		self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
+
+		self.exec()
+
+		return
+
+
+	### 이벤트
+	## 버튼 이벤트
+	# 확인 버튼 클릭
+	def onClickOK(self) -> tuple:
+		self.close()
+		self.return_data=(self.text.text(), True)
+
+		return 
+	# 취소 버튼 클릭
+	def onClickCancel(self) -> tuple:
+		self.close()
+		self.return_data=("", False)
+
+		return
+	## 텍스트 변경 이벤트
+	# 텍스트 변경 시 유효성 검사
+	def checkInvaildText(self, checker, params):
+		if checker(self.text.text(), params[0], params[1]):
+			self.error_text.setText("Invalid name")  #todo# 부적절한 이유 설명
+			self.ok_btn.setDisabled(True)  # 버튼 비활성화
+		else:
+			self.error_text.setText("")
+			self.ok_btn.setDisabled(False)
+
+		return

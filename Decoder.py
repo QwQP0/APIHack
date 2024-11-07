@@ -48,7 +48,7 @@ class Decoder:
 		decoder_data["enable_index"]=self.enable_index
 		decoder_data["error_index"]=self.error_index
 
-		return
+		return decoder_data
 
 
 	## 탭 구성
@@ -191,7 +191,7 @@ class Decoder:
 	def onChangeFunction(self, index:int):
 		self.prevent_recursion=True  # decode함수에서 텍스트 변경 시 발생하는 inputChanged로의 재귀 방지
 
-		self.decode(index-1)  # 변환
+		self.decode(index)  # 변환
 		self.enable_index=index-1  # 비활성화 지점 변경
 		self.setState()  # 라벨 상태 변경
 

@@ -1,7 +1,9 @@
 #################### Imports ####################
 
+from email.policy import default
 import sys
 
+from PySide6.QtCore import QLine
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenuBar, QPushButton, QTabWidget, QVBoxLayout, QWidget
 from PySide6.QtGui import QKeySequence, Qt
 
@@ -20,171 +22,175 @@ from Variables import Variables
 class Main(QMainWindow):
 	def __init__(self):
 		super().__init__()
-		## Î≥ÄÏàò ÏÑ†Ïñ∏
-		# ÌÅ¥ÎûòÏä§ Î≥ÄÏàò
-		self.is_tab_reinited=False  # UI Ïû¨Íµ¨ÏÑ± Ïó¨Î∂Ä
-		# Ï†ÑÏó≠ Î≥ÄÏàò
+		## ∫Øºˆ º±æ
+		# ≈¨∑°Ω∫ ∫Øºˆ
+		self.is_tab_reinited=False  # UI ¿Á±∏º∫ ø©∫Œ
+		# ¿¸ø™ ∫Øºˆ
 		Global.main=self
 
-		self.initUI()  # Í∏∞Î≥∏ UI Íµ¨ÏÑ±
+		self.initUI()  # ±‚∫ª UI ±∏º∫
 
-		self.setCentralWidget(self.main_tabs)  # Î©îÏù∏ ÏúÑÏ†Ø ÏÑ§Ï†ï
+		self.setCentralWidget(self.main_tabs)  # ∏ﬁ¿Œ ¿ß¡¨ º≥¡§
 
-		# ÌôîÎ©¥ ÏÑ§Ï†ï
+		# »≠∏È º≥¡§
 		self.setWindowTitle('APIHACK')  #debug#
-		self.setGeometry(960, 540, 480, 270) # ÌÅ¨Í∏∞, ÏúÑÏπò ÏÑ§Ï†ï  #debug#
+		self.setGeometry(480, 270, 960, 540) # ≈©±‚, ¿ßƒ° º≥¡§  #debug#
 		self.show()
 
 	
-	## ÌôîÎ©¥ Íµ¨ÏÑ±
-	# UI Íµ¨ÏÑ±
+	## »≠∏È ±∏º∫
+	# UI ±∏º∫
 	def initUI(self):
-		self.initMenu()  # Î©îÎâ¥ Î∞î Íµ¨ÏÑ±
-		self.initTab()  # Í∏∞Î≥∏ ÌÉ≠ Íµ¨ÏÑ±
+		self.initMenu()  # ∏ﬁ¥∫ πŸ ±∏º∫
+		self.initTab()  # ±‚∫ª ≈« ±∏º∫
 
 		return
-	# Î©îÎâ¥ Î∞î Íµ¨ÏÑ±
+	# ∏ﬁ¥∫ πŸ ±∏º∫
 	def initMenu(self):
-		# Î©îÎâ¥ Íµ¨ÏÑ±
+		# ∏ﬁ¥∫ ±∏º∫
 		self.menubar=QMenuBar()
-		self.setMenuBar(self.menubar)  # Î©îÎâ¥ Î∞î ÏÑ§Ï†ï
+		self.setMenuBar(self.menubar)  # ∏ﬁ¥∫ πŸ º≥¡§
 		self.menu_list={}
 		
-		## ÌååÏùº Î©îÎâ¥ Íµ¨ÏÑ±
+		## ∆ƒ¿œ ∏ﬁ¥∫ ±∏º∫
 		self.menu_list["File"]=self.menubar.addMenu("File")
-		# ÌååÏùº ÏÉùÏÑ± Ïï°ÏÖò Íµ¨ÏÑ±
+		# ∆ƒ¿œ ª˝º∫ æ◊º« ±∏º∫
 		self.menu_list["File"].addAction("New..", QKeySequence(Qt.CTRL | Qt.Key_N))
-		self.menu_list["File"].children()[1].triggered.connect(self.createProject)  # Ìï®Ïàò Ïó∞Í≤∞
-		# ÌååÏùº Î∂àÎü¨Ïò§Í∏∞ Ïï°ÏÖò Íµ¨ÏÑ±
+		self.menu_list["File"].children()[1].triggered.connect(self.createProject)  # «‘ºˆ ø¨∞·
+		# ∆ƒ¿œ ∫“∑Øø¿±‚ æ◊º« ±∏º∫
 		self.menu_list["File"].addAction("Open..", QKeySequence(Qt.CTRL | Qt.Key_O))
-		self.menu_list["File"].children()[2].triggered.connect(self.openProject)  # Ìï®Ïàò Ïó∞Í≤∞
-		# Íµ¨Î∂ÑÏÑ†
+		self.menu_list["File"].children()[2].triggered.connect(self.openProject)  # «‘ºˆ ø¨∞·
+		# ±∏∫–º±
 		self.menu_list["File"].addAction("").setSeparator(True)
-		# ÌååÏùº Ï†ÄÏû• Ïï°ÏÖò Íµ¨ÏÑ±
-		self.menu_list["File"].addAction("Save", QKeySequence(Qt.CTRL | Qt.Key_S))
-		self.menu_list["File"].children()[4].triggered.connect(self.saveCurProject)  # Ìï®Ïàò Ïó∞Í≤∞
 		
 		return
-	# Í∏∞Î≥∏ ÌÉ≠ Íµ¨ÏÑ±
+	# ±‚∫ª ≈« ±∏º∫
 	def initTab(self):
-		# ÌÉ≠ ÏúÑÏ†Ø ÏÑ†Ïñ∏
+		# ≈« ¿ß¡¨ º±æ
 		self.main_tabs=QTabWidget()
 
-		### Ìôà ÌÉ≠
+		### »® ≈«
 		self.home_tab=QWidget()
 		self.main_tabs.addTab(self.home_tab, "HOME")
 		self.home_tab_content=QVBoxLayout(self.home_tab)
-		## Ïò§Î∏åÏ†ùÌä∏ ÏÑ†Ïñ∏
-		# Î≤ÑÌäº Íµ¨Ïó≠
+		## ø¿∫Í¡ß∆Æ º±æ
+		# πˆ∆∞ ±∏ø™
 		self.btn_div=QHBoxLayout()
-		# Î≤ÑÌäº
+		# πˆ∆∞
 		self.crt_pj_btn=QPushButton("new project")
 		self.open_pj_btn=QPushButton("open project")
-		## UI Íµ¨ÏÑ±
+		## UI ±∏º∫
 		self.home_tab_content.addWidget(QLabel("Start Hack With ***"))
 		self.home_tab_content.addWidget(QLabel("Start new project or open existing projects"))
-		self.home_tab_content.addLayout(self.btn_div)  # Î≤ÑÌäº Íµ¨Ïó≠ Ï∂îÍ∞Ä
+		self.home_tab_content.addLayout(self.btn_div)  # πˆ∆∞ ±∏ø™ √ﬂ∞°
 		self.btn_div.addWidget(self.crt_pj_btn)
 		self.btn_div.addWidget(self.open_pj_btn)
-		## Ïù¥Î≤§Ìä∏ Ïó∞Í≤∞
+		## ¿Ã∫•∆Æ ø¨∞·
 		self.crt_pj_btn.clicked.connect(self.createProject)
 		self.open_pj_btn.clicked.connect(self.openProject)
 
-		### ÎîîÏΩîÎçî ÌÉ≠
+		### µƒ⁄¥ı ≈«
 		self.decoder_tab=QWidget()
 		self.main_tabs.addTab(self.decoder_tab, "Decoder")
 		Global.dcd=Decoder(self.decoder_tab)
 
-		### ÎπÑÍµêÏûê ÌÉ≠
+		### ∫Ò±≥¿⁄ ≈«
 		self.comparer_tab=QWidget()
 		self.main_tabs.addTab(self.comparer_tab, "Comparer")
 		Global.cmp=Comparer(self.comparer_tab)
 
 		return
-	# ÌÉ≠ Ïû¨Íµ¨ÏÑ±(ÌîÑÎ°úÏ†ùÌä∏ ÏÉùÏÑ±, Î∂àÎü¨Ïò§Í∏∞ Ïãú ÏàòÌñâ)
+	# ≈« ¿Á±∏º∫(«¡∑Œ¡ß∆Æ ª˝º∫, ∫“∑Øø¿±‚ Ω√ ºˆ«‡)
 	def reinitTab(self):
-		self.main_tabs.removeTab(0)  # Ìôà ÌÉ≠ Ï†úÍ±∞
+		self.main_tabs.removeTab(0)  # »® ≈« ¡¶∞≈
 
-		## ÏÇ¨Ïù¥Îìú Î∑∞
-		# Ïò§Î∏åÏ†ùÌä∏ ÏÑ†Ïñ∏
-		self.main_widget=QWidget()  # Î©îÏù∏ ÏúÑÏ†Ø ÏÑ†Ïñ∏
-		self.main_div=QHBoxLayout(self.main_widget)  # Î©îÏù∏ Î†àÏù¥ÏïÑÏõÉ; Î©îÏù∏ ÏúÑÏ†Ø ÏûêÏãù
-		Global.sdv=SideView()  # ÏÇ¨Ïù¥ÎìúÎ∑∞ ÏÑ†Ïñ∏
-		# UI Êè¥—äÍΩ¶
-		self.main_div.addLayout(Global.sdv.side_view_content)  # Î©îÏù∏ Î†àÏù¥ÏïÑÏõÉÏóê ÏÇ¨Ïù¥Îìú Î∑∞ Ï∂îÍ∞Ä
-		self.main_div.addWidget(self.main_tabs)  # Î©îÏù∏ Î†àÏù¥ÏïÑÏõÉÏóê ÌÉ≠ Î∞î Ï∂îÍ∞Ä
-		self.setCentralWidget(self.main_widget)  # ÌîÑÎ°úÍ∑∏Îû® Î©îÏù∏ ÏúÑÏ†Ø ÏÑ§Ï†ï(Í∏∞Ï°¥ ÌÉ≠ Î∞îÏóêÏÑú (ÏÇ¨Ïù¥Îìú Î∑∞+ÌÉ≠ Î∞î)Ïùò Î∂ÄÎ™® ÏúÑÏ†ØÏúºÎ°ú ÏÑ§Ï†ï)
+		## ªÁ¿ÃµÂ ∫‰
+		# ø¿∫Í¡ß∆Æ º±æ
+		self.main_widget=QWidget()  # ∏ﬁ¿Œ ¿ß¡¨ º±æ
+		self.main_div=QHBoxLayout(self.main_widget)  # ∏ﬁ¿Œ ∑π¿Ãæ∆øÙ; ∏ﬁ¿Œ ¿ß¡¨ ¿⁄Ωƒ
+		Global.sdv=SideView()  # ªÁ¿ÃµÂ∫‰ º±æ
+		# UI ±∏º∫
+		self.main_div.addLayout(Global.sdv.side_view_content)  # ∏ﬁ¿Œ ∑π¿Ãæ∆øÙø° ªÁ¿ÃµÂ ∫‰ √ﬂ∞°
+		self.main_div.addWidget(self.main_tabs)  # ∏ﬁ¿Œ ∑π¿Ãæ∆øÙø° ≈« πŸ √ﬂ∞°
+		self.setCentralWidget(self.main_widget)  # «¡∑Œ±◊∑• ∏ﬁ¿Œ ¿ß¡¨ º≥¡§(±‚¡∏ ≈« πŸø°º≠ (ªÁ¿ÃµÂ ∫‰+≈« πŸ)¿« ∫Œ∏ ¿ß¡¨¿∏∑Œ º≥¡§)
 
-		## ÏöîÏ≤≠ ÌÉ≠
+		## ø‰√ª ≈«
 		self.request_tab=QWidget()
 		self.main_tabs.insertTab(0, self.request_tab, "Request")
 		Global.req=Request(self.request_tab)
 
-		## Î≥ÄÏàò ÌÉ≠
+		## ∫Øºˆ ≈«
 		self.variables_tab=QWidget()
 		self.main_tabs.insertTab(1, self.variables_tab, "Variables")
 		Global.var=Variables(self.variables_tab)
 
-		## ÏùëÎãµ ÌÉ≠
+		## ¿¿¥‰ ≈«
 		self.response_tab=QWidget()
 		self.main_tabs.insertTab(2, self.response_tab, "Response")
+
+		self.is_tab_reinited=True
 
 		return
 
 
-	# ÌîÑÎ°úÏ†ùÌä∏, ÏöîÏ≤≠ Ï†ïÎ≥¥ ÌÉ≠Ïóê Ï†ÅÏö©
+	# «¡∑Œ¡ß∆Æ, ø‰√ª ¡§∫∏ ≈«ø° ¿˚øÎ
 	def loadProject(self, project_name:str, request_name:str=None):
 		if request_name==None:
-			request_name=list(Global.projects_data[project_name]["requests"].keys())[0]  # Í∏∞Î≥∏ ÏöîÏ≤≠(Ï≤´ Î≤àÏß∏ ÏöîÏ≤≠) ÏÇ¨Ïö©
+			request_name=list(Global.projects_data[project_name]["requests"].keys())[0]  # ±‚∫ª ø‰√ª(√π π¯¬∞ ø‰√ª) ªÁøÎ
 
-		if Global.cur_request_name!="":  # ÌòÑÏû¨ ÌÉ≠Ïóê Ï†ÅÏö©Îêú ÏöîÏ≤≠ Ï†ïÎ≥¥ ÏûàÏùå
-			# ÌòÑÏû¨ Ï†ïÎ≥¥ Ï†ÄÏû•
-			Global.projects_data[Global.cur_project_name]["requests"][Global.cur_request_name]=Global.req.getTabInfo()  # ÏöîÏ≤≠
-			Global.projects_data[Global.cur_project_name]["variables"]=Global.var.getTabInfo()  # Î≥ÄÏàò
-			Global.projects_data[Global.cur_project_name]["decoder"]=Global.dcd.getTabInfo()  # ÎîîÏΩîÎçî
-			File.saveProject(Global.cur_project_name)  # ÌîÑÎ°úÏ†ùÌä∏ ÌååÏùº Ï†ÄÏû•
+		if Global.cur_request_name!="":  # «ˆ¿Á ≈«ø° ¿˚øÎµ» ø‰√ª ¡§∫∏ ¿÷¿Ω
+			# «ˆ¿Á ¡§∫∏ ¿˙¿Â
+			Global.projects_data[Global.cur_project_name]["requests"][Global.cur_request_name]=Global.req.getTabInfo()  # ø‰√ª
+			Global.projects_data[Global.cur_project_name]["variables"]=Global.var.getTabInfo()  # ∫Øºˆ
+			Global.projects_data[Global.cur_project_name]["decoder"]=Global.dcd.getTabInfo()  # µƒ⁄¥ı
+			File.saveProject(Global.cur_project_name)  # «¡∑Œ¡ß∆Æ ∆ƒ¿œ ¿˙¿Â
 
-			Global.res[Global.cur_project_name][Global.cur_request_name].response_tab_content.setParent(None)  # Í∏∞Ï°¥ ÏùëÎãµ ÌÉ≠ ÏúÑÏ†Ø ÌÉ≠ Î∞îÏóêÏÑú Ï†úÏô∏(ÏÇ≠Ï†ú ÏïÑÎãò)
+			Global.res[Global.cur_project_name][Global.cur_request_name].response_tab_content.setParent(None)  # ±‚¡∏ ¿¿¥‰ ≈« ¿ß¡¨ ≈« πŸø°º≠ ¡¶ø‹(ªË¡¶ æ∆¥‘)
 
-		self.main_tabs.setCurrentIndex(0)  # ÏöîÏ≤≠ ÌÉ≠ÏúºÎ°ú Ï†ÑÌôò
+		self.main_tabs.setCurrentIndex(0)  # ø‰√ª ≈«¿∏∑Œ ¿¸»Ø
 
-		## ÌÉ≠Ïóê ÎÇ¥Ïö© Ï†ÅÏö©
-		Global.req.initUI(Global.projects_data[project_name]["requests"][request_name])  # ÏöîÏ≤≠ ÌÉ≠Ïóê ÎÇ¥Ïö© Ï†ÅÏö©
-		Global.var.initUI(Global.projects_data[project_name]["variables"])  # Î≥ÄÏàò ÌÉ≠Ïóê ÎÇ¥Ïö© Ï†ÅÏö©
-		Global.dcd.initUI(Global.projects_data[project_name]["decoder"])  # ÎîîÏΩîÎçî ÌÉ≠Ïóê ÎÇ¥Ïö© Ï†ÅÏö©
-		# ÏùëÎãµ ÌÉ≠Ïóê ÎÇ¥Ïö© Ï†ÅÏö©
+		## ≈«ø° ≥ªøÎ ¿˚øÎ
+		Global.req.initUI(Global.projects_data[project_name]["requests"][request_name])  # ø‰√ª ≈«ø° ≥ªøÎ ¿˚øÎ
+		Global.var.initUI(Global.projects_data[project_name]["variables"])  # ∫Øºˆ ≈«ø° ≥ªøÎ ¿˚øÎ
+		Global.dcd.initUI(Global.projects_data[project_name]["decoder"])  # µƒ⁄¥ı ≈«ø° ≥ªøÎ ¿˚øÎ
+		# ¿¿¥‰ ≈«ø° ≥ªøÎ ¿˚øÎ
 		try:
-			Global.res[project_name][request_name].response_tab_content.setParent(self.response_tab)  # ÏùëÎãµ ÌÉ≠ UI Í∞àÏïÑÎÅºÏö∞Í∏∞
-		except:  # ÏùëÎãµ ÌÉ≠ UI ÏóÜÏùå!
-			Global.res[project_name][request_name]=Response()  # ?ÏïπÍΩ¶
-			Global.res[project_name][request_name].response_tab_content.setParent(self.response_tab)  # ÏùëÎãµ ÌÉ≠ UI Í∞àÏïÑÎÅºÏö∞Í∏∞
+			Global.res[project_name][request_name].response_tab_content.setParent(self.response_tab)  # ¿¿¥‰ ≈« UI ∞•æ∆≥¢øÏ±‚
+		except:  # ¿¿¥‰ ≈« UI æ¯¿Ω!
+			Global.res[project_name][request_name]=Response()  # ¿¿¥‰ ≈«
+			Global.res[project_name][request_name].response_tab_content.setParent(self.response_tab)  # ¿¿¥‰ ≈« UI ∞•æ∆≥¢øÏ±‚
 
-		Global.sdv.focusLabel(project_name, request_name)  # ÌïòÏù¥ÎùºÏù¥Ìä∏ Ï†ÅÏö©
+		Global.sdv.focusLabel(project_name, request_name)  # «œ¿Ã∂Û¿Ã∆Æ ¿˚øÎ
 		
-		#  ÌòÑÏû¨ ÌîÑÎ°úÏ†ùÌä∏, ÏöîÏ≤≠ Î≥ÄÍ≤Ω
+		#  «ˆ¿Á «¡∑Œ¡ß∆Æ, ø‰√ª ∫Ø∞Ê
 		Global.cur_project_name=project_name
 		Global.cur_request_name=request_name
 
 		return
 
 
-	## ÌîÑÎ°úÏ†ùÌä∏ Í¥ÄÎ¶¨
-	# ÌîÑÎ°úÏ†ùÌä∏ ÏÉùÏÑ± ÌåùÏóÖ
+	## «¡∑Œ¡ß∆Æ ∞¸∏Æ
+	# «¡∑Œ¡ß∆Æ ª˝º∫ ∆Àæ˜
 	def createProject(self):
 		print("Main.CreateProject : create project popup")
 		dialog=CreateProjectDialog()
 
 		if dialog.return_data:
-			is_file_created=File.createProject(dialog.return_data[0], dialog.return_data[1], dialog.return_data[2])  # ÌååÏùº ÏÉùÏÑ±
+			# ¿Ã∏ß ¿Ø»ø ∞ÀªÁ
+			if File.isInvalidName(dialog.return_data[1]):  # ¿Ø»ø«œ¡ˆ æ ¿∫ ¿Ã∏ß
+				#todo# æÀ∏≤
+				return
 
-			if is_file_created:  # ÌååÏùº ÏÉùÏÑ± ÏÑ±Í≥µ
+			is_file_created=File.createProject(dialog.return_data[0], dialog.return_data[1], dialog.return_data[2])  # ∆ƒ¿œ ª˝º∫
+
+			if is_file_created:  # ∆ƒ¿œ ª˝º∫ º∫∞¯
 				if not self.is_tab_reinited:
-					self.reinitTab()  # ÌÉ≠ Ïû¨Íµ¨ÏÑ±
-				Global.sdv.initUI(dialog.return_data[1])  # ÏÇ¨Ïù¥Îìú Î∑∞Ïóê ÎùºÎ≤® Ï∂îÍ∞Ä
-				self.loadProject(dialog.return_data[1])  # ÌîÑÎ°úÏ†ùÌä∏ Î°úÎìú(ÌîÑÎ°úÏ†ùÌä∏ Ïù¥Î¶Ñ)
+					self.reinitTab()  # ≈« ¿Á±∏º∫
+				Global.sdv.initUI(dialog.return_data[1])  # ªÁ¿ÃµÂ ∫‰ø° ∂Û∫ß √ﬂ∞°
+				self.loadProject(dialog.return_data[1])  # «¡∑Œ¡ß∆Æ ∑ŒµÂ(«¡∑Œ¡ß∆Æ ¿Ã∏ß)
 
 		return
-	# ÌîÑÎ°úÏ†ùÌä∏ Î∂àÎü¨Ïò§Í∏∞
+	# «¡∑Œ¡ß∆Æ ∫“∑Øø¿±‚
 	def openProject(self):
 		print("Main.openProject : open project")
 		path= QFileDialog.getOpenFileName(self, 'Open file', './')
@@ -194,17 +200,17 @@ class Main(QMainWindow):
 			project_path='/'.join(path[:len(path)-2])
 			project_name=path[-1]
 
-			if not project_name.split('.')[-1]=="ahp":  # ÌîÑÎ°úÏ†ùÌä∏ ÌååÏùºÏù¥ ÏïÑÎãê Îïå
+			if not project_name.split('.')[-1]=="ahp":  # «¡∑Œ¡ß∆Æ ∆ƒ¿œ¿Ã æ∆¥“ ∂ß
 				print("Main.openProject : not project file")
 			else:
 				project_name='.'.join(project_name.split('.')[:len(project_name.split('.'))-1])
 				is_project_opened=File.openProject(project_path, project_name)
 
-				if is_project_opened:  # Ïó¥Î†§ÏûàÎäî ÌîÑÎ°úÏ†ùÌä∏
+				if is_project_opened:  # ø≠∑¡¿÷¥¬ «¡∑Œ¡ß∆Æ
 					if not self.is_tab_reinited:
-						self.reinitTab()  # ÌÉ≠ Ïû¨Íµ¨ÏÑ±
-					Global.sdv.initUI(project_name)  # ÏÇ¨Ïù¥ÎìúÎ∑∞Ïóê ÎùºÎ≤® Ï∂îÍ∞Ä
-					self.loadProject(project_name)  # ÌîÑÎ°úÏ†ùÌä∏ Î°úÎìú
+						self.reinitTab()  # ≈« ¿Á±∏º∫
+					Global.sdv.initUI(project_name)  # ªÁ¿ÃµÂ∫‰ø° ∂Û∫ß √ﬂ∞°
+					self.loadProject(project_name)  # «¡∑Œ¡ß∆Æ ∑ŒµÂ
 
 		return
 
@@ -217,71 +223,99 @@ class CreateProjectDialog(QDialog):
 		self.return_data=None
 		
 		self.initUI()
-		self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
 
 		self.exec()
 
 		return
 		
 
-	# UI Ï¥àÍ∏∞ ÏÑ§Ï†ï
+	# UI √ ±‚ º≥¡§
 	def initUI(self):
+		## ø¿∫Í¡ß∆Æ º±æ
+		self.this=QVBoxLayout()
+		# ±∏ø™
 		self.pjpath_if_div=QVBoxLayout()
 		self.pjname_if_div=QVBoxLayout()
 		self.tgurl_if_div=QVBoxLayout()
 		self.btn_div=QHBoxLayout()
-			
-		# ÌîÑÎ°úÏ†ùÌä∏ Í≤ΩÎ°ú ÏûÖÎ†• Ïπ∏
+		# ¿‘∑¬ ƒ≠
+		self.pjpath_if=QLineEdit(Global.default_project_path)
+		self.pjname_if=QLineEdit(File.setNameAuto("", "", 'p'))
+		self.tgurl_if=QLineEdit()
+		# πˆ∆∞
+		self.file_exp_btn=QPushButton("\\")
+		self.crt_btn=QPushButton("new project")
+		self.cancel_btn=QPushButton("cancel")
+		# ∂Û∫ß
+		self.error_text=QLabel()
+		
+		## ø¿∫Í¡ß∆Æ ±∏º∫
+		# «¡∑Œ¡ß∆Æ ∞Ê∑Œ ¿‘∑¬ ±∏ø™
 		self.pjpath_if_div.addWidget(QLabel("Project Path"))
 		self.pjpath_if_div.addLayout(QHBoxLayout())
-		self.pjpath_if=QLineEdit(Global.default_project_path)
-		self.pjpath_if.textChanged.connect(lambda :self.pjname_if.setText(File.setNameAuto("", self.pjpath_if.text(), 'p')))
-		self.file_exp_btn=QPushButton("\\")
-		self.file_exp_btn.clicked.connect(lambda :self.pjpath_if.setText(QFileDialog.getExistingDirectory(parent=self, caption="Set Directory")))
-		# -> Í∏∞Î≥∏ ÌååÏùº Í≤ΩÎ°ú ÏÑ§Ï†ï
-		#todo# -> getOpenFileUrl Îß§Í∞úÎ≥ÄÏàòÎ°ú Global.default_project_path ÎÑ£Í∏∞
 		self.pjpath_if_div.children()[0].addWidget(self.pjpath_if)
 		self.pjpath_if_div.children()[0].addWidget(self.file_exp_btn)
-		
-		# ÌîÑÎ°úÏ†ùÌä∏ Ïù¥Î¶Ñ ÏûÖÎ†• Ïπ∏
+		# «¡∑Œ¡ß∆Æ ¿Ã∏ß ¿‘∑¬ ±∏ø™
 		self.pjname_if_div.addWidget(QLabel("Project Name"))
-		self.pjname_if=QLineEdit(File.setNameAuto("", "", 'p'))
 		self.pjname_if_div.addWidget(self.pjname_if)
-		
-		# ÌÉÄÍ≤ü URL ÏûÖÎ†• Ïπ∏
+		self.pjname_if_div.addWidget(self.error_text)
+		# ≈∏∞Ÿ URL ¿‘∑¬ ±∏ø™
 		self.tgurl_if_div.addWidget(QLabel("Target Base URL"))
-		self.tgurl_if=QLineEdit()
 		self.tgurl_if_div.addWidget(self.tgurl_if)
-		 
-		# Î≤ÑÌäº Í∑∏Î£π
-		self.cancel_btn=QPushButton("cancel")
-		self.crt_btn=QPushButton("new project")
-		self.cancel_btn.clicked.connect(self.onclickCancel)
-		self.crt_btn.clicked.connect(self.onclickCreate)
-		self.btn_div.addWidget(self.cancel_btn)
+		# πˆ∆∞ ±∏ø™
 		self.btn_div.addWidget(self.crt_btn)
-		 
-		# Ï†ÑÏ≤¥ Ï∞Ω
-		self.this=QVBoxLayout()
+		self.btn_div.addWidget(self.cancel_btn)
+		# ¿¸√º √¢
 		self.this.addLayout(self.pjpath_if_div)
 		self.this.addLayout(self.pjname_if_div)
 		self.this.addLayout(self.tgurl_if_div)
 		self.this.addLayout(self.btn_div)
 		self.setLayout(self.this)
+		
+		## ¿Ã∫•∆Æ ø¨∞·
+		# πˆ∆∞
+		self.crt_btn.clicked.connect(self.onclickCreate)
+		self.cancel_btn.clicked.connect(self.onclickCancel)
+		self.file_exp_btn.clicked.connect(lambda :self.pjpath_if.setText(QFileDialog.getExistingDirectory(parent=self, caption="Set Directory")))
+		# -> ±‚∫ª ∆ƒ¿œ ∞Ê∑Œ º≥¡§
+		#todo# -> ∏≈∞≥∫Øºˆ∑Œ Global.default_project_path ≥÷±‚
+		# ≈ÿΩ∫∆Æ ∫Ø∞Ê
+		self.pjpath_if.textChanged.connect(lambda :self.pjname_if.setText(File.setNameAuto("", self.pjpath_if.text(), 'p')))
+		self.pjname_if.textChanged.connect(self.checkInvaildName)
+
+		## ±‚≈∏ º≥¡§
+		self.error_text.setStyleSheet("color:#c33")
+		self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
 
 		return
 		
 
-	## Î≤ÑÌäº ÌÅ¥Î¶≠ Ïù¥Î≤§Ìä∏
-	# cancel Î≤ÑÌäº ÌÅ¥Î¶≠
-	def onclickCancel(self):
-		self.close()
-		return False
-	# create Î≤ÑÌäº ÌÅ¥Î¶≠
+	### ¿Ã∫•∆Æ
+	## πˆ∆∞ ≈¨∏Ø ¿Ã∫•∆Æ
+	# create πˆ∆∞ ≈¨∏Ø
 	def onclickCreate(self):
 		self.return_data=[self.pjpath_if.text(), self.pjname_if.text(), self.tgurl_if.text()]
 		self.close()
+
 		return True
+	# cancel πˆ∆∞ ≈¨∏Ø
+	def onclickCancel(self):
+		self.close()
+
+		return False
+	## ≈ÿΩ∫∆Æ ∫Ø∞Ê
+	# «¡∑Œ¡ß∆Æ ¿Ã∏ß ∫Ø∞Ê Ω√
+	def checkInvaildName(self):
+		if File.isInvalidName(self.pjname_if.text(), self.pjpath_if.text(), 'p'):
+			self.error_text.setText("Invalid name")  #todo# ∫Œ¿˚¿˝«— ¿Ã¿Ø º≥∏Ì
+			self.crt_btn.setDisabled(True)  # πˆ∆∞ ∫Ò»∞º∫»≠
+		else:
+			self.error_text.setText("")
+			self.crt_btn.setDisabled(False)
+
+		return
+		
+		
 
 
 
@@ -292,8 +326,19 @@ class CreateProjectDialog(QDialog):
 
 
 
-##debug#
+#debug#
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
 	ex = Main()
+
+	File.openProject("E:/__apihack test", "My project")
+	Global.main.reinitTab()
+	Global.sdv.initUI("My project")
+	Global.main.loadProject("My project")
+
+	File.openProject("E:/__apihack test", "My project(1)")
+	Global.sdv.initUI("My project(1)")
+	Global.main.loadProject("My project(1)")
+
 	sys.exit(app.exec())
+#debug#

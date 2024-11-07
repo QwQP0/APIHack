@@ -21,6 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="backup.py" />
     <Compile Include="Comparer.py" />
     <Compile Include="Decoder.py" />
     <Compile Include="Main.py" />
